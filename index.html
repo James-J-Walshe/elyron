@@ -1,1 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Business Process Digitization Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .upload-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px dashed #cbd5e0;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-section.dragover {
+            border-color: #667eea;
+            background: #e6f3ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 20px 0;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .analysis-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            position: relative;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        #analysisCanvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .element-card {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .element-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .element-type {
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .element-type.rectangle {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .element-type.diamond {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .element-type.circle {
+            background: #bee3f8;
+            color: #2a4365;
+        }
+
+        .element-text {
+            font-size: 1rem;
+            color: #2d3748;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .processing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e2e8f0;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .export-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            grid-column: 1 / -1;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 6px 16px rgba(66, 153, 225, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AI Business Process Digitization Tool</h1>
+            <p>Upload process diagrams and extract structured data with computer vision</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📋</div>
+                <h3>Upload Process Diagram</h3>
+                <p>Drag and drop your business process image here or click to browse</p>
+                <div class="file-input-wrapper">
+                    <input type="file" class="file-input" id="fileInput" accept="image/*">
+                    <button class="file-input-button">Choose File</button>
+                </div>
+                <p style="margin-top: 15px; color: #718096; font-size: 0.9rem;">
+                    Supports: JPG, PNG, GIF, BMP, WebP
+                </p>
+            </div>
+
+            <div class="analysis-section">
+                <h3 style="margin-bottom: 20px;">Analysis Results</h3>
+                <div class="canvas-container">
+                    <canvas id="analysisCanvas"></canvas>
+                    <div class="processing-overlay" id="processingOverlay" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Analyzing process diagram...</p>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" id="analyzeBtn" disabled>🔍 Analyze Process</button>
+                    <button class="btn" id="detectShapesBtn" disabled>⬜ Detect Shapes</button>
+                    <button class="btn" id="clearBtn" disabled>🗑️ Clear</button>
+                </div>
+
+                <div class="stats" id="statsSection" style="display: none;">
+                    <div class="stat-card">
+                        <div class="stat-number" id="rectangleCount">0</div>
+                        <div class="stat-label">Process Steps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="diamondCount">0</div>
+                        <div class="stat-label">Decisions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="circleCount">0</div>
+                        <div class="stat-label">Start/End Points</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalElements">0</div>
+                        <div class="stat-label">Total Elements</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="export-section full-width" id="exportSection" style="display: none;">
+            <h3 style="margin-bottom: 20px;">📊 Detected Elements</h3>
+            <div class="results-panel" id="resultsPanel">
+                <!-- Results will be populated here -->
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h4 style="margin-bottom: 15px;">Export Options</h4>
+                <div class="export-buttons">
+                    <button class="btn btn-secondary" id="exportJsonBtn">📄 Export as JSON</button>
+                    <button class="btn btn-secondary" id="exportCsvBtn">📊 Export as CSV</button>
+                    <button class="btn btn-secondary" id="exportImageBtn">🖼️ Save Annotated Image</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BusinessProcessDigitizer {
+            constructor() {
+                this.canvas = document.getElementById('analysisCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.uploadedImage = null;
+                this.detectedElements = [];
+                this.processResults = null;
+                
+                this.setupEventListeners();
+                this.initializeCanvas();
+            }
+
+            setupEventListeners() {
+                const fileInput = document.getElementById('fileInput');
+                const uploadSection = document.getElementById('uploadSection');
+                
+                fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
+                
+                // Drag and drop functionality
+                uploadSection.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.add('dragover');
+                });
+                
+                uploadSection.addEventListener('dragleave', () => {
+                    uploadSection.classList.remove('dragover');
+                });
+                
+                uploadSection.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.processFile(files[0]);
+                    }
+                });
+
+                // Button event listeners
+                document.getElementById('analyzeBtn').addEventListener('click', () => this.analyzeProcess());
+                document.getElementById('detectShapesBtn').addEventListener('click', () => this.detectShapes());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
+                
+                // Export buttons
+                document.getElementById('exportJsonBtn').addEventListener('click', () => this.exportJSON());
+                document.getElementById('exportCsvBtn').addEventListener('click', () => this.exportCSV());
+                document.getElementById('exportImageBtn').addEventListener('click', () => this.exportAnnotatedImage());
+            }
+
+            initializeCanvas() {
+                this.canvas.width = 800;
+                this.canvas.height = 600;
+                this.ctx.fillStyle = '#f8fafc';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = '#a0aec0';
+                this.ctx.font = '18px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('Upload an image to begin analysis', this.canvas.width/2, this.canvas.height/2);
+            }
+
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.processFile(file);
+                }
+            }
+
+            processFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    alert('Please upload a valid image file.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.uploadedImage = img;
+                        this.displayImage(img);
+                        this.enableButtons();
+                        this.resetResults();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            displayImage(img) {
+                const canvasAspect = this.canvas.width / this.canvas.height;
+                const imageAspect = img.width / img.height;
+                
+                let drawWidth, drawHeight, drawX, drawY;
+                
+                if (imageAspect > canvasAspect) {
+                    drawWidth = this.canvas.width;
+                    drawHeight = this.canvas.width / imageAspect;
+                    drawX = 0;
+                    drawY = (this.canvas.height - drawHeight) / 2;
+                } else {
+                    drawWidth = this.canvas.height * imageAspect;
+                    drawHeight = this.canvas.height;
+                    drawX = (this.canvas.width - drawWidth) / 2;
+                    drawY = 0;
+                }
+
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = '#f8fafc';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+                
+                // Store scaling info for later use
+                this.imageScale = {
+                    scaleX: drawWidth / img.width,
+                    scaleY: drawHeight / img.height,
+                    offsetX: drawX,
+                    offsetY: drawY,
+                    drawWidth,
+                    drawHeight
+                };
+            }
+
+            enableButtons() {
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('detectShapesBtn').disabled = false;
+                document.getElementById('clearBtn').disabled = false;
+            }
+
+            resetResults() {
+                this.detectedElements = [];
+                this.processResults = null;
+                document.getElementById('statsSection').style.display = 'none';
+                document.getElementById('exportSection').style.display = 'none';
+            }
+
+            async analyzeProcess() {
+                this.showProcessing(true);
+                
+                try {
+                    // Simulate processing delay
+                    await this.delay(1500);
+                    
+                    // Simulate shape detection (in real implementation, this would use computer vision)
+                    const mockResults = this.simulateShapeDetection();
+                    this.processResults = mockResults;
+                    this.detectedElements = mockResults.elements;
+                    
+                    this.visualizeResults();
+                    this.updateStats();
+                    this.displayResults();
+                    
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    alert('Error during analysis. Please try again.');
+                } finally {
+                    this.showProcessing(false);
+                }
+            }
+
+            simulateShapeDetection() {
+                // Mock data simulating the Python processor results
+                const elements = [];
+                const imgWidth = this.uploadedImage.width;
+                const imgHeight = this.uploadedImage.height;
+                
+                // Generate some mock rectangles (process steps)
+                const rectangleTexts = ['Start Process', 'Validate Input', 'Process Data', 'Generate Report', 'Send Email'];
+                for (let i = 0; i < Math.min(3, rectangleTexts.length); i++) {
+                    elements.push({
+                        id: `RECT-${i + 1}`,
+                        type: 'rectangle',
+                        bbox: [
+                            Math.random() * (imgWidth * 0.6),
+                            Math.random() * (imgHeight * 0.6) + imgHeight * 0.1,
+                            imgWidth * 0.15 + Math.random() * 50,
+                            imgHeight * 0.08 + Math.random() * 20
+                        ],
+                        text: rectangleTexts[i],
+                        center: [0, 0] // Will be calculated
+                    });
+                }
+                
+                // Generate some mock diamonds (decisions)
+                const diamondTexts = ['Is Valid?', 'Approved?', 'Continue?'];
+                for (let i = 0; i < Math.min(2, diamondTexts.length); i++) {
+                    elements.push({
+                        id: `DIAMOND-${i + 1}`,
+                        type: 'diamond',
+                        bbox: [
+                            Math.random() * (imgWidth * 0.6) + imgWidth * 0.2,
+                            Math.random() * (imgHeight * 0.6) + imgHeight * 0.2,
+                            imgWidth * 0.1 + Math.random() * 30,
+                            imgHeight * 0.1 + Math.random() * 30
+                        ],
+                        text: diamondTexts[i],
+                        center: [0, 0]
+                    });
+                }
+                
+                // Generate some mock circles (start/end points)
+                const circleTexts = ['Start', 'End'];
+                for (let i = 0; i < Math.min(2, circleTexts.length); i++) {
+                    const radius = 30 + Math.random() * 20;
+                    elements.push({
+                        id: `CIRCLE-${i + 1}`,
+                        type: 'circle',
+                        bbox: [
+                            Math.random() * (imgWidth * 0.4) + imgWidth * 0.3,
+                            i === 0 ? imgHeight * 0.1 : imgHeight * 0.8,
+                            radius * 2,
+                            radius * 2
+                        ],
+                        text: circleTexts[i],
+                        center: [0, 0]
+                    });
+                }
+
+                // Calculate centers
+                elements.forEach(elem => {
+                    elem.center = [
+                        elem.bbox[0] + elem.bbox[2] / 2,
+                        elem.bbox[1] + elem.bbox[3] / 2
+                    ];
+                });
+
+                return {
+                    process_id: `PROC-${Date.now()}`,
+                    elements: elements
+                };
+            }
+
+            detectShapes() {
+                this.analyzeProcess(); // For now, same as analyze
+            }
+
+            visualizeResults() {
+                if (!this.uploadedImage || !this.detectedElements.length) return;
+                
+                // Redraw the image
+                this.displayImage(this.uploadedImage);
+                
+                // Draw detected elements
+                this.detectedElements.forEach(element => {
+                    this.drawElement(element);
+                });
+            }
+
+            drawElement(element) {
+                const scale = this.imageScale;
+                const [x, y, w, h] = element.bbox;
+                
+                // Convert to canvas coordinates
+                const canvasX = x * scale.scaleX + scale.offsetX;
+                const canvasY = y * scale.scaleY + scale.offsetY;
+                const canvasW = w * scale.scaleX;
+                const canvasH = h * scale.scaleY;
+                
+                // Set colors based on type
+                let color;
+                switch (element.type) {
+                    case 'rectangle': color = '#38a169'; break;
+                    case 'diamond': color = '#e53e3e'; break;
+                    case 'circle': color = '#3182ce'; break;
+                    default: color = '#718096';
+                }
+                
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 3;
+                
+                if (element.type === 'circle') {
+                    // Draw circle
+                    this.ctx.beginPath();
+                    this.ctx.arc(canvasX + canvasW/2, canvasY + canvasH/2, canvasW/2, 0, 2 * Math.PI);
+                    this.ctx.stroke();
+                } else if (element.type === 'diamond') {
+                    // Draw diamond
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(canvasX + canvasW/2, canvasY);
+                    this.ctx.lineTo(canvasX + canvasW, canvasY + canvasH/2);
+                    this.ctx.lineTo(canvasX + canvasW/2, canvasY + canvasH);
+                    this.ctx.lineTo(canvasX, canvasY + canvasH/2);
+                    this.ctx.closePath();
+                    this.ctx.stroke();
+                } else {
+                    // Draw rectangle
+                    this.ctx.strokeRect(canvasX, canvasY, canvasW, canvasH);
+                }
+                
+                // Draw label
+                this.ctx.fillStyle = color;
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'left';
+                this.ctx.fillText(`${element.type}: ${element.text}`, canvasX, canvasY - 5);
+            }
+
+            updateStats() {
+                const rectangles = this.detectedElements.filter(e => e.type === 'rectangle').length;
+                const diamonds = this.detectedElements.filter(e => e.type === 'diamond').length;
+                const circles = this.detectedElements.filter(e => e.type === 'circle').length;
+                
+                document.getElementById('rectangleCount').textContent = rectangles;
+                document.getElementById('diamondCount').textContent = diamonds;
+                document.getElementById('circleCount').textContent = circles;
+                document.getElementById('totalElements').textContent = this.detectedElements.length;
+                
+                document.getElementById('statsSection').style.display = 'grid';
+            }
+
+            displayResults() {
+                const resultsPanel = document.getElementById('resultsPanel');
+                resultsPanel.innerHTML = '';
+                
+                if (this.detectedElements.length === 0) {
+                    resultsPanel.innerHTML = '<p style="text-align: center; color: #718096;">No elements detected</p>';
+                    return;
+                }
+                
+                this.detectedElements.forEach(element => {
+                    const card = document.createElement('div');
+                    card.className = 'element-card';
+                    card.innerHTML = `
+                        <div class="element-type ${element.type}">${element.type.toUpperCase()}</div>
+                        <div style="font-size: 0.9rem; color: #4a5568; margin-bottom: 5px;">ID: ${element.id}</div>
+                        <div class="element-text">${element.text || 'No text detected'}</div>
+                        <div style="font-size: 0.8rem; color: #718096; margin-top: 8px;">
+                            Position: (${Math.round(element.bbox[0])}, ${Math.round(element.bbox[1])}) 
+                            Size: ${Math.round(element.bbox[2])}×${Math.round(element.bbox[3])}
+                        </div>
+                    `;
+                    resultsPanel.appendChild(card);
+                });
+                
+                document.getElementById('exportSection').style.display = 'block';
+            }
+
+            clearCanvas() {
+                this.initializeCanvas();
+                this.resetResults();
+                document.getElementById('analyzeBtn').disabled = true;
+                document.getElementById('detectShapesBtn').disabled = true;
+                document.getElementById('clearBtn').disabled = true;
+                document.getElementById('fileInput').value = '';
+                this.uploadedImage = null;
+            }
+
+            showProcessing(show) {
+                document.getElementById('processingOverlay').style.display = show ? 'flex' : 'none';
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            // Export functions
+            exportJSON() {
+                if (!this.processResults) return;
+                
+                const dataStr = JSON.stringify(this.processResults, null, 2);
+                this.downloadFile(dataStr, 'process-analysis.json', 'application/json');
+            }
+
+            exportCSV() {
+                if (!this.detectedElements.length) return;
+                
+                let csv = 'ID,Type,Text,X,Y,Width,Height,CenterX,CenterY\n';
+                this.detectedElements.forEach(element => {
+                    const [x, y, w, h] = element.bbox;
+                    const [cx, cy] = element.center;
+                    csv += `"${element.id}","${element.type}","${element.text}",${x},${y},${w},${h},${cx},${cy}\n`;
+                });
+                
+                this.downloadFile(csv, 'process-elements.csv', 'text/csv');
+            }
+
+            exportAnnotatedImage() {
+                if (!this.uploadedImage) return;
+                
+                const link = document.createElement('a');
+                link.download = 'annotated-process.png';
+                link.href = this.canvas.toDataURL();
+                link.click();
+            }
+
+            downloadFile(content, filename, contentType) {
+                const blob = new Blob([content], { type: contentType });
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
+                window.URL.revokeObjectURL(url);
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new BusinessProcessDigitizer();
+        });
+    </script>
+</body>
+</html>
