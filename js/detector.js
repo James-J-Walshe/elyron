@@ -120,7 +120,7 @@ class RectangleDetector {
                 this.enableControls();
                 this.hideResults();
                 
-                StatusManager.showStatus(`✅ Image loaded: ${file.name}`, 'success');
+                StatusManager.showStatus(`Image loaded: ${file.name}`, 'success');
                 StatusManager.setLoadingState('uploadSection', false);
                 
                 console.log(`Image loaded: ${img.width}x${img.height}`);
@@ -303,7 +303,7 @@ class RectangleDetector {
             params.sensitivity
         );
         
-        // Find rectangles from edges
+        // Find rectangles from edges using improved algorithm
         const rectangles = this.findRectanglesFromEdges(
             edges,
             imageData.width,
@@ -323,7 +323,7 @@ class RectangleDetector {
     }
 
     /**
-     * Find rectangles from edge map using connected components
+     * Improved rectangle detection using contour approximation
      * @param {Uint8ClampedArray} edges - Edge map
      * @param {number} width - Image width
      * @param {number} height - Image height
@@ -335,91 +335,239 @@ class RectangleDetector {
         const rectangles = [];
         const visited = new Uint8ClampedArray(width * height);
         
-        // Grid search for edge regions
-        const gridStep = 12;
-        for (let y = gridStep; y < height - gridStep; y += gridStep) {
-            for (let x = gridStep; x < width - gridStep; x += gridStep) {
-                if (visited[y * width + x] || !edges[y * width + x]) continue;
-                
-                const rect = this.traceRectangleRegion(edges, visited, x, y, width, height);
-                
-                if (rect && GeometryUtils.isValidRectangle(rect, minArea, maxAspectRatio)) {
-                    rectangles.push(this.createRectangleObject(rect, rectangles.length));
-                }
-                
-                // Prevent infinite processing
-                if (rectangles.length >= 50) break;
+        // Step 1: Find all edge contours
+        const contours = this.findContours(edges, width, height);
+        console.log(`Found ${contours.length} contours`);
+        
+        // Step 2: Process each contour for rectangles
+        for (const contour of contours) {
+            if (contour.length < 20) continue; // Skip tiny contours
+            
+            // Step 3: Approximate contour to polygon
+            const polygon = this.approximatePolygon(contour, 0.02);
+            
+            // Step 4: Check if polygon is rectangular
+            const rect = this.validateRectangularShape(polygon, minArea, maxAspectRatio);
+            
+            if (rect) {
+                rectangles.push(this.createRectangleObject(rect, rectangles.length));
             }
-            if (rectangles.length >= 50) break;
+            
+            if (rectangles.length >= 10) break; // Limit results
         }
         
         return rectangles;
     }
 
     /**
-     * Trace a rectangular region from a starting edge pixel
+     * Find contours in edge image
+     * @param {Uint8ClampedArray} edges - Edge map
+     * @param {number} width - Image width
+     * @param {number} height - Image height
+     * @returns {Array} Array of contours
+     */
+    findContours(edges, width, height) {
+        const contours = [];
+        const visited = new Uint8ClampedArray(width * height);
+        
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                if (!edges[y * width + x] || visited[y * width + x]) continue;
+                
+                const contour = this.traceContour(edges, visited, x, y, width, height);
+                if (contour.length > 10) {
+                    contours.push(contour);
+                }
+            }
+        }
+        
+        return contours;
+    }
+
+    /**
+     * Trace a single contour
      * @param {Uint8ClampedArray} edges - Edge map
      * @param {Uint8ClampedArray} visited - Visited pixels map
      * @param {number} startX - Starting X coordinate
      * @param {number} startY - Starting Y coordinate
      * @param {number} width - Image width
      * @param {number} height - Image height
-     * @returns {Object|null} Rectangle object or null
+     * @returns {Array} Array of contour points
      */
-    traceRectangleRegion(edges, visited, startX, startY, width, height) {
-        let minX = startX, maxX = startX;
-        let minY = startY, maxY = startY;
-        let edgePixels = 0;
-        let totalPixels = 0;
+    traceContour(edges, visited, startX, startY, width, height) {
+        const contour = [];
+        const stack = [[startX, startY]];
         
-        const queue = [[startX, startY]];
-        const maxIterations = 800; // Prevent infinite loops
-        
-        while (queue.length > 0 && totalPixels < maxIterations) {
-            const [x, y] = queue.pop();
+        while (stack.length > 0 && contour.length < 1000) { // Prevent infinite loops
+            const [x, y] = stack.pop();
             
             if (x < 0 || x >= width || y < 0 || y >= height) continue;
-            if (visited[y * width + x]) continue;
+            if (visited[y * width + x] || !edges[y * width + x]) continue;
             
             visited[y * width + x] = 1;
-            totalPixels++;
+            contour.push([x, y]);
             
-            if (edges[y * width + x] > 0) {
-                edgePixels++;
-                minX = Math.min(minX, x);
-                maxX = Math.max(maxX, x);
-                minY = Math.min(minY, y);
-                maxY = Math.max(maxY, y);
-                
-                // Add 4-connected neighbors
-                queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            // Add 8-connected neighbors
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    stack.push([x + dx, y + dy]);
+                }
             }
         }
         
-        const rectWidth = maxX - minX + 1;
-        const rectHeight = maxY - minY + 1;
-        const area = rectWidth * rectHeight;
+        return contour;
+    }
+
+    /**
+     * Approximate contour to polygon using Douglas-Peucker algorithm
+     * @param {Array} contour - Array of contour points
+     * @param {number} epsilon - Approximation accuracy
+     * @returns {Array} Simplified polygon
+     */
+    approximatePolygon(contour, epsilon) {
+        if (contour.length < 3) return contour;
         
-        // Calculate confidence based on edge density and rectangularity
-        const perimeter = 2 * (rectWidth + rectHeight);
-        const expectedEdgePixels = perimeter * 0.6; // Expect 60% edge coverage
-        const edgeCompleteness = Math.min(1.0, edgePixels / expectedEdgePixels);
+        // Find the point with maximum distance from line segment
+        let maxDistance = 0;
+        let maxIndex = 0;
+        const start = contour[0];
+        const end = contour[contour.length - 1];
         
-        // Rectangularity score based on aspect ratio
-        const aspectRatio = Math.max(rectWidth, rectHeight) / Math.min(rectWidth, rectHeight);
-        const rectangularityScore = Math.max(0, 1 - (aspectRatio - 1) / 4); // Penalize extreme ratios
+        for (let i = 1; i < contour.length - 1; i++) {
+            const distance = this.pointToLineDistance(contour[i], start, end);
+            if (distance > maxDistance) {
+                maxDistance = distance;
+                maxIndex = i;
+            }
+        }
         
-        const confidence = (edgeCompleteness * 0.7 + rectangularityScore * 0.3);
+        // If max distance is greater than epsilon, recursively simplify
+        if (maxDistance > epsilon * this.contourPerimeter(contour)) {
+            const leftPart = this.approximatePolygon(contour.slice(0, maxIndex + 1), epsilon);
+            const rightPart = this.approximatePolygon(contour.slice(maxIndex), epsilon);
+            return leftPart.slice(0, -1).concat(rightPart);
+        } else {
+            return [start, end];
+        }
+    }
+
+    /**
+     * Calculate distance from point to line segment
+     * @param {Array} point - Point coordinates [x, y]
+     * @param {Array} lineStart - Line start coordinates [x, y]
+     * @param {Array} lineEnd - Line end coordinates [x, y]
+     * @returns {number} Distance
+     */
+    pointToLineDistance(point, lineStart, lineEnd) {
+        const [px, py] = point;
+        const [x1, y1] = lineStart;
+        const [x2, y2] = lineEnd;
         
-        // Filter based on quality metrics
-        if (confidence > 0.25 && area > 300 && rectWidth > 10 && rectHeight > 10) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+        
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        
+        if (lenSq === 0) return Math.sqrt(A * A + B * B);
+        
+        const param = dot / lenSq;
+        
+        let xx, yy;
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+        
+        const dx = px - xx;
+        const dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Calculate contour perimeter
+     * @param {Array} contour - Array of contour points
+     * @returns {number} Perimeter length
+     */
+    contourPerimeter(contour) {
+        if (contour.length < 2) return 0;
+        
+        let perimeter = 0;
+        for (let i = 1; i < contour.length; i++) {
+            const dx = contour[i][0] - contour[i-1][0];
+            const dy = contour[i][1] - contour[i-1][1];
+            perimeter += Math.sqrt(dx * dx + dy * dy);
+        }
+        return perimeter;
+    }
+
+    /**
+     * Validate if polygon is rectangular
+     * @param {Array} polygon - Array of polygon vertices
+     * @param {number} minArea - Minimum area threshold
+     * @param {number} maxAspectRatio - Maximum aspect ratio
+     * @returns {Object|null} Rectangle object or null
+     */
+    validateRectangularShape(polygon, minArea, maxAspectRatio) {
+        // Must have exactly 4 vertices for rectangle
+        if (polygon.length !== 4) return null;
+        
+        // Calculate bounding rectangle
+        const xs = polygon.map(p => p[0]);
+        const ys = polygon.map(p => p[1]);
+        
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const area = width * height;
+        
+        // Apply filters
+        if (area < minArea) return null;
+        
+        const aspectRatio = Math.max(width, height) / Math.min(width, height);
+        if (aspectRatio > maxAspectRatio) return null;
+        
+        // Check if polygon vertices are close to rectangle corners
+        const corners = [
+            [minX, minY], [maxX, minY], 
+            [maxX, maxY], [minX, maxY]
+        ];
+        
+        let totalDistance = 0;
+        for (let i = 0; i < 4; i++) {
+            const minDist = Math.min(...corners.map(corner => {
+                const dx = polygon[i][0] - corner[0];
+                const dy = polygon[i][1] - corner[1];
+                return Math.sqrt(dx * dx + dy * dy);
+            }));
+            totalDistance += minDist;
+        }
+        
+        // If polygon vertices are close to rectangle corners, it's rectangular
+        const avgDistance = totalDistance / 4;
+        const tolerance = Math.sqrt(area) * 0.1; // 10% of rectangle "radius"
+        
+        if (avgDistance < tolerance) {
             return {
                 x: minX,
                 y: minY,
-                width: rectWidth,
-                height: rectHeight,
+                width: width,
+                height: height,
                 area: area,
-                confidence: Math.round(confidence * 100) / 100
+                confidence: Math.max(0.3, 1 - (avgDistance / tolerance))
             };
         }
         
