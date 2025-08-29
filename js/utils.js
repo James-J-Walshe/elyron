@@ -310,4 +310,176 @@ class CanvasUtils {
         // Draw rectangle outline
         ctx.strokeStyle = strokeColor;
         ctx.lineWidth = lineWidth;
-        ctx.strokeRect(rect.
+        // Draw rectangle outline
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = lineWidth;
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+        // Draw corner markers
+        if (showCorners) {
+            ctx.fillStyle = strokeColor;
+            const corners = [
+                [rect.x, rect.y],
+                [rect.x + rect.width, rect.y],
+                [rect.x + rect.width, rect.y + rect.height],
+                [rect.x, rect.y + rect.height]
+            ];
+            
+            corners.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x, y, cornerSize, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+
+        // Draw label
+        if (showLabel && label) {
+            ctx.font = '12px Arial';
+            const textWidth = ctx.measureText(label).width;
+            
+            // Background for text
+            ctx.fillStyle = strokeColor;
+            ctx.fillRect(rect.x, rect.y - 20, textWidth + 10, 18);
+            
+            // Text
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'left';
+            ctx.fillText(label, rect.x + 5, rect.y - 6);
+        }
+    }
+}
+
+class StatusManager {
+    /**
+     * Show status message to user
+     * @param {string} message - Message to display
+     * @param {string} type - Message type ('success', 'error', 'info')
+     * @param {number} duration - Display duration in ms
+     */
+    static showStatus(message, type = 'success', duration = 3000) {
+        const statusEl = document.getElementById('statusMessage');
+        if (!statusEl) return;
+        
+        statusEl.textContent = message;
+        statusEl.className = `status-message ${type}`;
+        statusEl.style.display = 'block';
+        
+        // Auto-hide after duration
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, duration);
+    }
+
+    /**
+     * Update parameter display values
+     */
+    static updateParameterDisplays() {
+        const parameters = [
+            { id: 'sensitivity', valueId: 'sensitivityValue' },
+            { id: 'minArea', valueId: 'minAreaValue' },
+            { id: 'aspectRatio', valueId: 'aspectRatioValue' }
+        ];
+
+        parameters.forEach(param => {
+            const element = document.getElementById(param.id);
+            const valueElement = document.getElementById(param.valueId);
+            
+            if (element && valueElement) {
+                valueElement.textContent = element.value;
+            }
+        });
+    }
+
+    /**
+     * Toggle button enabled/disabled state
+     * @param {string} buttonId - Button element ID
+     * @param {boolean} enabled - Whether button should be enabled
+     */
+    static toggleButton(buttonId, enabled) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = !enabled;
+        }
+    }
+
+    /**
+     * Show/hide loading state on an element
+     * @param {string} elementId - Element ID
+     * @param {boolean} loading - Whether to show loading state
+     */
+    static setLoadingState(elementId, loading) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        
+        if (loading) {
+            element.classList.add('processing');
+        } else {
+            element.classList.remove('processing');
+        }
+    }
+}
+
+class ValidationUtils {
+    /**
+     * Validate uploaded file
+     * @param {File} file - File to validate
+     * @returns {Object} Validation result {valid: boolean, error?: string}
+     */
+    static validateImageFile(file) {
+        if (!file) {
+            return { valid: false, error: 'No file selected' };
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            return { valid: false, error: 'Please select a valid image file' };
+        }
+        
+        // Check file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            return { valid: false, error: 'Image file is too large (max 10MB)' };
+        }
+        
+        // Check supported formats
+        const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!supportedTypes.includes(file.type)) {
+            return { valid: false, error: 'Unsupported image format. Please use JPEG, PNG, GIF, or WebP' };
+        }
+        
+        return { valid: true };
+    }
+
+    /**
+     * Validate detection parameters
+     * @param {Object} params - Parameters to validate
+     * @returns {Object} Validation result
+     */
+    static validateDetectionParams(params) {
+        const { sensitivity, minArea, aspectRatio } = params;
+        
+        if (sensitivity < 10 || sensitivity > 300) {
+            return { valid: false, error: 'Sensitivity must be between 10 and 300' };
+        }
+        
+        if (minArea < 100 || minArea > 50000) {
+            return { valid: false, error: 'Minimum area must be between 100 and 50,000 pixels' };
+        }
+        
+        if (aspectRatio < 1 || aspectRatio > 20) {
+            return { valid: false, error: 'Aspect ratio must be between 1 and 20' };
+        }
+        
+        return { valid: true };
+    }
+}
+
+// Export utilities for use in other modules (if using ES6 modules)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        ImageProcessor,
+        GeometryUtils,
+        CanvasUtils,
+        StatusManager,
+        ValidationUtils
+    };
+}
