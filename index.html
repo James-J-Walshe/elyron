@@ -1,1 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rectangle Detection Tool</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📐 Rectangle Detection Tool</h1>
+            <p>Upload an image and detect rectangular shapes using computer vision</p>
+        </div>
 
+        <div class="main-content">
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📋</div>
+                <h3>Upload Image</h3>
+                <p>Choose an image file with rectangles to detect</p>
+                <div class="file-input-wrapper">
+                    <input type="file" class="file-input" id="fileInput" accept="image/*">
+                    <button class="file-input-button">Choose Image</button>
+                </div>
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+
+            <div class="detection-section">
+                <h3 style="margin-bottom: 20px;">Detection Results</h3>
+                <div class="canvas-container">
+                    <canvas id="canvas"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" id="detectBtn" disabled>🔍 Detect Rectangles</button>
+                    <button class="btn" id="clearBtn" disabled>🗑️ Clear</button>
+                </div>
+
+                <div class="parameters">
+                    <h4 style="margin-bottom: 15px; color: #2d3748;">Detection Parameters</h4>
+                    
+                    <div class="parameter-group">
+                        <label for="sensitivity">Edge Sensitivity</label>
+                        <input type="range" id="sensitivity" min="30" max="150" value="60" step="5">
+                        <div class="parameter-value">Current: <span id="sensitivityValue">60</span></div>
+                    </div>
+                    
+                    <div class="parameter-group">
+                        <label for="minArea">Minimum Area</label>
+                        <input type="range" id="minArea" min="500" max="10000" value="1500" step="250">
+                        <div class="parameter-value">Current: <span id="minAreaValue">1500</span> pixels</div>
+                    </div>
+                    
+                    <div class="parameter-group">
+                        <label for="aspectRatio">Max Aspect Ratio</label>
+                        <input type="range" id="aspectRatio" min="1" max="10" value="4" step="0.5">
+                        <div class="parameter-value">Current: <span id="aspectRatioValue">4</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results" id="results">
+            <h3 style="margin-bottom: 20px;">📊 Detection Results</h3>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="countStat">0</div>
+                    <div class="stat-label">Rectangles Found</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgAreaStat">0</div>
+                    <div class="stat-label">Average Area</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="timeStat">0</div>
+                    <div class="stat-label">Processing Time (ms)</div>
+                </div>
+            </div>
+
+            <div class="rectangle-list" id="rectangleList"></div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript files -->
+    <script src="js/utils.js"></script>
+    <script src="js/detector.js"></script>
+</body>
+</html>
