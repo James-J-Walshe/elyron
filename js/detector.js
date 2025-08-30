@@ -303,7 +303,7 @@ class RectangleDetector {
             params.sensitivity
         );
         
-        // Find rectangles from edges using improved algorithm
+        // Find rectangles from edges using simplified algorithm
         const rectangles = this.findRectanglesFromEdges(
             edges,
             imageData.width,
@@ -323,7 +323,7 @@ class RectangleDetector {
     }
 
     /**
-     * Find rectangles from edge map using area-based analysis
+     * Simplified rectangle detection - looks for edge-dense rectangular regions
      * @param {Uint8ClampedArray} edges - Edge map
      * @param {number} width - Image width
      * @param {number} height - Image height
@@ -335,140 +335,70 @@ class RectangleDetector {
         const rectangles = [];
         const visited = new Uint8ClampedArray(width * height);
         
-        // Use a coarser grid search for more reliable detection
-        const stepSize = 20;
+        // Much simpler approach - look for edge-dense rectangular regions
+        const stepSize = 15;
         
-        for (let y = stepSize; y < height - stepSize; y += stepSize) {
-            for (let x = stepSize; x < width - stepSize; x += stepSize) {
+        for (let y = 10; y < height - 50; y += stepSize) {
+            for (let x = 10; x < width - 50; x += stepSize) {
                 if (visited[y * width + x]) continue;
                 
-                // Look for rectangular regions using a different approach
-                const rect = this.findRectangularRegion(edges, visited, x, y, width, height, minArea, maxAspectRatio);
-                
-                if (rect) {
-                    rectangles.push(this.createRectangleObject(rect, rectangles.length));
+                // Try different rectangle sizes at this position
+                for (let w = 40; w < Math.min(300, width - x); w += 20) {
+                    for (let h = 30; h < Math.min(200, height - y); h += 15) {
+                        const area = w * h;
+                        if (area < minArea) continue;
+                        
+                        const aspectRatio = Math.max(w, h) / Math.min(w, h);
+                        if (aspectRatio > maxAspectRatio) continue;
+                        
+                        // Count total edges in this rectangle
+                        let edgeCount = 0;
+                        let totalPixels = 0;
+                        
+                        for (let dy = 0; dy < h; dy++) {
+                            for (let dx = 0; dx < w; dx++) {
+                                if (y + dy < height && x + dx < width) {
+                                    totalPixels++;
+                                    if (edges[(y + dy) * width + (x + dx)]) {
+                                        edgeCount++;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        const edgeRatio = edgeCount / totalPixels;
+                        
+                        // If this region has a reasonable amount of edges, consider it a rectangle
+                        if (edgeRatio > 0.1 && edgeRatio < 0.8) { // 10-80% edges
+                            // Mark as visited
+                            for (let dy = 0; dy < h; dy += 5) {
+                                for (let dx = 0; dx < w; dx += 5) {
+                                    if (y + dy < height && x + dx < width) {
+                                        visited[(y + dy) * width + (x + dx)] = 1;
+                                    }
+                                }
+                            }
+                            
+                            rectangles.push(this.createRectangleObject({
+                                x: x,
+                                y: y,
+                                width: w,
+                                height: h,
+                                area: area,
+                                confidence: Math.min(0.95, edgeRatio * 2)
+                            }, rectangles.length));
+                            
+                            if (rectangles.length >= 10) return rectangles;
+                            break; // Found one at this position, move on
+                        }
+                    }
+                    if (rectangles.length >= 10) break;
                 }
-                
-                if (rectangles.length >= 10) break;
             }
-            if (rectangles.length >= 10) break;
         }
         
+        console.log(`Simple detection found ${rectangles.length} rectangles`);
         return rectangles;
-    }
-
-    /**
-     * Find rectangular region using area analysis
-     */
-    findRectangularRegion(edges, visited, startX, startY, width, height, minArea, maxAspectRatio) {
-        // Sample different rectangle sizes around this point
-        const maxSize = Math.min(width - startX, height - startY, 200);
-        
-        for (let w = 30; w < maxSize; w += 15) {
-            for (let h = 20; h < maxSize; h += 15) {
-                // Check if this could be a valid rectangle
-                const area = w * h;
-                if (area < minArea) continue;
-                
-                const aspectRatio = Math.max(w, h) / Math.min(w, h);
-                if (aspectRatio > maxAspectRatio) continue;
-                
-                // Count edge pixels in this rectangular region
-                const edgeScore = this.evaluateRectangularRegion(edges, startX, startY, w, h, width, height);
-                
-                if (edgeScore > 0.3) { // At least 30% edge coverage
-                    // Mark this region as visited
-                    this.markRegionVisited(visited, startX, startY, w, h, width, height);
-                    
-                    return {
-                        x: startX,
-                        y: startY,
-                        width: w,
-                        height: h,
-                        area: area,
-                        confidence: Math.min(0.95, edgeScore)
-                    };
-                }
-            }
-        }
-        
-        return null;
-    }
-
-    /**
-     * Evaluate how rectangular a region is based on edge distribution
-     */
-    evaluateRectangularRegion(edges, x, y, w, h, imgWidth, imgHeight) {
-        let borderEdges = 0;
-        let totalBorderPixels = 0;
-        let interiorEdges = 0;
-        let totalInteriorPixels = 0;
-        
-        // Check border pixels (should have many edges)
-        const borderWidth = 2;
-        
-        // Top and bottom borders
-        for (let i = 0; i < w; i++) {
-            for (let j = 0; j < borderWidth; j++) {
-                // Top border
-                if (y + j < imgHeight && x + i < imgWidth) {
-                    totalBorderPixels++;
-                    if (edges[(y + j) * imgWidth + (x + i)]) borderEdges++;
-                }
-                // Bottom border  
-                if (y + h - j - 1 >= 0 && y + h - j - 1 < imgHeight && x + i < imgWidth) {
-                    totalBorderPixels++;
-                    if (edges[(y + h - j - 1) * imgWidth + (x + i)]) borderEdges++;
-                }
-            }
-        }
-        
-        // Left and right borders
-        for (let j = borderWidth; j < h - borderWidth; j++) {
-            for (let i = 0; i < borderWidth; i++) {
-                // Left border
-                if (x + i < imgWidth && y + j < imgHeight) {
-                    totalBorderPixels++;
-                    if (edges[(y + j) * imgWidth + (x + i)]) borderEdges++;
-                }
-                // Right border
-                if (x + w - i - 1 >= 0 && x + w - i - 1 < imgWidth && y + j < imgHeight) {
-                    totalBorderPixels++;
-                    if (edges[(y + j) * imgWidth + (x + w - i - 1)]) borderEdges++;
-                }
-            }
-        }
-        
-        // Check interior pixels (should have fewer edges)
-        for (let j = borderWidth + 2; j < h - borderWidth - 2; j++) {
-            for (let i = borderWidth + 2; i < w - borderWidth - 2; i++) {
-                if (x + i < imgWidth && y + j < imgHeight) {
-                    totalInteriorPixels++;
-                    if (edges[(y + j) * imgWidth + (x + i)]) interiorEdges++;
-                }
-            }
-        }
-        
-        const borderRatio = totalBorderPixels > 0 ? borderEdges / totalBorderPixels : 0;
-        const interiorRatio = totalInteriorPixels > 0 ? interiorEdges / totalInteriorPixels : 0;
-        
-        // Good rectangles have high border edge ratio and low interior edge ratio
-        const score = borderRatio * 0.8 - interiorRatio * 0.2;
-        
-        return Math.max(0, score);
-    }
-
-    /**
-     * Mark a region as visited to prevent overlapping detections
-     */
-    markRegionVisited(visited, x, y, w, h, imgWidth, imgHeight) {
-        for (let j = 0; j < h; j += 5) {
-            for (let i = 0; i < w; i += 5) {
-                if (x + i < imgWidth && y + j < imgHeight) {
-                    visited[(y + j) * imgWidth + (x + i)] = 1;
-                }
-            }
-        }
     }
 
     /**
